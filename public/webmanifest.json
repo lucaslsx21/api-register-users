@@ -1,0 +1,23 @@
+{
+  "name": "Auto Eletrica",
+  "short_name": "Auto Eletrica",
+  "start_url": "",
+  "icons": [
+    {
+      "src": "./android-chrome.png",
+      "sizes": "500x500",
+      "type": "image/png"
+    },
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "background_color": "#E7E6E4",
+  "theme_color": "#E7E6E4",
+  "orientation": "portrait",
+  "display": "standalone"
+}
+
+
