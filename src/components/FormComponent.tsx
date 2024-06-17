@@ -12,6 +12,8 @@ interface Item {
   pagamento: number;
   gorjeta: string; // Tratando gorjeta como string
   foiPago: boolean;
+  metodoPagamento: string;
+  parcelas: number;
 }
 
 export const FormComponent = () => {
@@ -19,8 +21,10 @@ export const FormComponent = () => {
   const [placa, setPlaca] = useState("");
   const [servico, setServico] = useState("Peça Trocada");
   const [pagamento, setPagamento] = useState("20"); // Inicializa como string
+  const [parcelas, setParcelas] = useState(1);
   const [foiPago, setFoiPago] = useState(false);
   const [lista, setLista] = useState<Item[]>([]);
+  const [metodoPagamento, setMetodoPagamento] = useState("Pix");
 
   useEffect(() => {
     const storedList = localStorage.getItem("lista");
@@ -45,8 +49,14 @@ export const FormComponent = () => {
   const handlePagamentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPagamento(e.target.value);
   };
+  const handleParcelasChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setParcelas(parseInt(e.target.value));
+  };
   const handleFoiPagoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFoiPago(e.target.checked);
+  };
+  const handleMetodoPagamentoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setMetodoPagamento(e.target.value);
   };
 
   const handleAdicionar = (e: { preventDefault: () => void }) => {
@@ -58,6 +68,8 @@ export const FormComponent = () => {
       pagamento: parseFloat(pagamento), // Converte para número ao adicionar
       gorjeta: "0", // Inicializa gorjeta como string
       foiPago,
+      metodoPagamento,
+      parcelas,
     };
     setLista([...lista, newItem]);
 
@@ -66,6 +78,8 @@ export const FormComponent = () => {
     setServico("Peça Trocada");
     setPagamento("20"); // Reseta como string
     setFoiPago(false);
+    setMetodoPagamento("Pix");
+    setParcelas(1);
   };
 
   const handleCheckboxChange = (index: number) => {
@@ -98,50 +112,70 @@ export const FormComponent = () => {
     0
   ); // Converte gorjeta para número
 
+  const calculatePaymentDatesAndValues = (numParcelas: number, totalValue: number) => {
+    const datesAndValues = [];
+    const today = new Date();
+    const parcelValue = totalValue / numParcelas;
+    for (let i = 0; i < numParcelas; i++) {
+      const date = new Date(today);
+      date.setMonth(today.getMonth() + i);
+      const formattedDate = date.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      datesAndValues.push(`${formattedDate} - R$ ${parcelValue.toFixed(2)}`);
+    }
+    return datesAndValues;
+  };
+
   const generatePDF = () => {
     const doc = new jsPDF();
 
     doc.text("Relatório do Dia", 14, 22);
     doc.text(
-      `Data: ${
-        new Date().toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }) ?? ""
+      `Data: ${new Date().toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }) ?? ""
       }`,
       14,
       32
     );
 
     autoTable(doc, {
-      head: [["Marca/Modelo", "Placa", "Serviço", "Valor", "Gorjeta", "Pago"]],
+      head: [["Marca/Modelo", "Placa", "Serviço", "Valor", "Gorjeta", "Pago", "Método de Pagamento", "Parcelas", "Datas e Valores de Pagamento"]],
       body: lista.map((item) => [
         item.marca,
         item.placa,
         item.servico,
-        `R ${item.pagamento.toFixed(2)}`,
-        `R ${parseFloat(item.gorjeta).toFixed(2)}`,
+        `R$ ${item.pagamento.toFixed(2)}`,
+        `R$ ${parseFloat(item.gorjeta).toFixed(2)}`,
         item.foiPago ? "Sim" : "Não",
+        item.metodoPagamento,
+        item.parcelas > 1 ? `${item.parcelas}x` : "À vista",
+        item.metodoPagamento === "CartãoCredito" && item.parcelas > 1
+          ? calculatePaymentDatesAndValues(item.parcelas, item.pagamento).join(", ")
+          : "N/A",
       ]),
       startY: 40,
     });
 
     autoTable(doc, {
       body: [
-        [`Total Caixa: R ${totalPagamento.toFixed(2)}`],
-        [`Total Gorjeta: R ${totalGorjeta.toFixed(2)}`],
+        [`Total Caixa: R$ ${totalPagamento.toFixed(2)}`],
+        [`Total Gorjeta: R$ ${totalGorjeta.toFixed(2)}`],
       ],
       startY: (doc as any).lastAutoTable.finalY + 10,
     });
 
     doc.save(
-      `Relatorio_${
-        new Date().toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }) ?? ""
+      `Relatorio_${new Date().toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }) ?? ""
       }.pdf`
     );
   };
@@ -204,6 +238,33 @@ export const FormComponent = () => {
                 onChange={handlePagamentoChange}
               />
             </div>
+            <div className="flex flex-col px-2">
+              <label className="font-semibold text-[#cd3200]">Método de Pagamento:</label>
+              <select
+                value={metodoPagamento}
+                onChange={handleMetodoPagamentoChange}
+                className="border border-gray-300 focus:border-2 focus:border-[#cd3200] focus:outline-none bg-[#403C3D] p-2 text-zinc-100 text-bold rounded h-10"
+              >
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Pix">Pix</option>
+                <option value="CartãoDebito">Cartão Débito</option>
+                <option value="CartãoCredito">Cartão Crédito</option>
+              </select>
+            </div>
+            <div className="flex flex-col">
+            <label className="font-semibold text-[#cd3200]">Parcelas:</label>
+            <select
+              className="border border-gray-300 focus:border-2 focus:border-[#cd3200] focus:outline-none bg-[#403C3D] p-2 text-zinc-100 text-bold rounded h-10 w-64"
+              value={parcelas}
+              onChange={handleParcelasChange}
+            >
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}x
+                </option>
+              ))}
+            </select>
+          </div>
             <div className="flex gap-2 mr-4 mt-5">
               <label className="font-bold text-[#cd3200]">Pago</label>
               <input
@@ -249,6 +310,10 @@ export const FormComponent = () => {
               <p className="flex flex-col font-bold">
                 Valor:
                 <span className="font-semibold"> R$ {item.pagamento}</span>
+              </p>
+              <p className="flex flex-col font-bold">
+                Método de Pagamento:
+                <span className="font-semibold"> {item.metodoPagamento}</span>
               </p>
               <div className="flex gap-2">
                 <div className="flex items-center gap-2">
