@@ -1,7 +1,7 @@
 {
   "name": "Auto Eletrica",
   "short_name": "Auto Eletrica",
-  "start_url": "https://api-register-users-black.vercel.app/",
+  "start_url": "https://api-register-users-42ss.vercel.app/",
   "icons": [
     {
       "src": "./android-chrome.png",
